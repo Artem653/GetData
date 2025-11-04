@@ -1,113 +1,84 @@
-import { prisma } from "../core/prisma"; // ✅ імпорт клієнта Prisma
-import { Prisma } from "@prisma/client";
-import { CreatePost, UpdatePost, PostWithTags } from "./post.types";
+import prisma from "../core/prisma";
+import { PostRepositoryContract, CreatePost, UpdatePost } from "./post.types";
 
-export const PostRepository = {
-  // === Отримати всі пости ===
-  async getAll(): Promise<PostWithTags[]> {
+export const PostRepository: PostRepositoryContract = {
+  async getAll() {
     return prisma.post.findMany({
       include: { tags: { include: { tag: true } } },
     });
   },
 
-  // === Отримати пост за ID ===
-  async getById(id: number): Promise<PostWithTags | null> {
+  async getById(id) {
     return prisma.post.findUnique({
       where: { id },
       include: { tags: { include: { tag: true } } },
     });
   },
 
-  // === Створити пост ===
-  async create(data: CreatePost): Promise<PostWithTags> {
-    try {
-      const post = await prisma.post.create({
-        data: {
-          title: data.title,
-          description: data.description,
-          image: data.image,
-          // Якщо є теги — додаємо зв’язки
-          tags: data.tags
-            ? {
-                create: data.tags.map((tagName) => ({
-                  tag: { create: { name: tagName } },
-                })),
-              }
-            : undefined,
+  async create(data: CreatePost) {
+    const { title, description, image, tags } = data;
+    return prisma.post.create({
+      data: {
+        title,
+        description,
+        image,
+        tags: {
+          create: tags.map((tag) => ({
+            tag: {
+              connectOrCreate: {
+                where: { name: tag },
+                create: { name: tag },
+              },
+            },
+          })),
         },
-        include: { tags: { include: { tag: true } } },
-      });
-      return post;
-    } catch (error) {
-      console.error("Error creating post:", error);
-      if (error instanceof Prisma.PrismaClientKnownRequestError) {
-        if (error.code === "P2003") {
-          throw new Error("Failed to create relation between Post and Tag");
-        }
-      }
-      throw error;
-    }
+      },
+      include: { tags: { include: { tag: true } } },
+    });
   },
 
-  // === Оновити пост ===
-  async update(id: number, data: UpdatePost): Promise<PostWithTags> {
-    try {
-      const post = await prisma.post.update({
-        where: { id },
-        data: {
-          title: data.title,
-          description: data.description,
-          image: data.image,
-        },
-        include: { tags: { include: { tag: true } } },
-      });
-      return post;
-    } catch (error) {
-      console.error("Error updating post:", error);
-      throw error;
-    }
-  },
+ async update(id: number, data: UpdatePost) {
+  try {
+    const { title, description, image, tags } = data;
+    const updateData: any = {
+      title,
+      description,
+      image,
+    };
 
-  // === Видалити пост ===
-  async delete(id: number): Promise<PostWithTags> {
-    try {
-      const post = await prisma.post.delete({
-        where: { id },
-        include: { tags: { include: { tag: true } } },
-      });
-      return post;
-    } catch (error) {
-      console.error("Error deleting post:", error);
-      throw error;
+    if (tags && tags.length > 0) {
+      updateData.tags = {
+        deleteMany: {},
+        create: tags.map((tag) => ({
+          tag: {
+            connectOrCreate: {
+              where: { name: tag },
+              create: { name: tag },
+            },
+          },
+        })),
+      };
     }
-  },
 
-  // === Отримати всі теги ===
-  async getAllTags(skip = 0, take = 10) {
-    try {
-      const tags = await prisma.tag.findMany({
-        skip,
-        take,
-        include: { posts: true },
-      });
-      return tags;
-    } catch (error) {
-      console.error("Error fetching tags:", error);
-      throw error;
-    }
-  },
+    const updatedPost = await prisma.post.update({
+      where: { id },
+      data: updateData,
+      include: { tags: { include: { tag: true } } },
+    });
 
-  // === Отримати тег за ID ===
-  async getTagById(id: number) {
-    try {
-      const tag = await prisma.tag.findUnique({
-        where: { id },
-        include: { posts: true },
-      });
-      return tag;
-    } catch (error) {
-      console.error("Error fetching tag by id:", error);
-      throw error;
-    }
+    return updatedPost;
+  } catch (error) {
+    console.error("Error updating post:", error);
+    throw new Error("Failed to update post");
+  }
+},
+
+  async delete(id) {
+    return prisma.post.delete({
+      where: { id },
+      include: { tags: { include: { tag: true } } },
+    });
   },
 };
+
+
