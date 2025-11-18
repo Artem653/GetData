@@ -1,32 +1,45 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
 datasource db {
   provider = "sqlite"
   url      = env("DATABASE_URL")
 }
 
-generator client {
-  provider = "prisma-client-js"
+model User {
+  id          Int       @id @default(autoincrement())
+  firstName   String
+  secondName  String
+  email       String    @unique
+  avatar      String
+  password    String
+  isAdmin     Boolean   @default(false)
+
+  createdPosts Post[]
+  likedPosts   PostLike[]
 }
 
 model Post {
-  id          Int         @id @default(autoincrement())
+  id          Int       @id @default(autoincrement())
   title       String
   description String
   image       String
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
-  tags        PostTag[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  createdBy   User      @relation(fields: [userId], references: [id])
+  userId      Int
+
+  likedBy     PostLike[]
 }
 
-model Tag {
-  id    Int       @id @default(autoincrement())
-  name  String    @unique
-  posts PostTag[]
-}
+model PostLike {
+  user   User @relation(fields: [userId], references: [id])
+  userId Int
 
-model PostTag {
-  id     Int   @id @default(autoincrement())
-  post   Post  @relation(fields: [postId], references: [id])
+  post   Post @relation(fields: [postId], references: [id])
   postId Int
-  tag    Tag   @relation(fields: [tagId], references: [id])
-  tagId  Int
+
+  @@id([userId, postId])
 }

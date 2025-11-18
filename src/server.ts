@@ -1,12 +1,14 @@
 import express from "express";
 import PostRouter from "./Post/post.router";
 import TagRouter from "./Tag/tag.router";
+import UserRouter from "./User/user.router";
 
 const app = express();
 app.use(express.json());
 
 app.use(PostRouter);
 app.use(TagRouter);
+app.use(UserRouter);
 
 const HOST = "localhost";
 const PORT = 8001;

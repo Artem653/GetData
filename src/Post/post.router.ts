@@ -1,12 +1,16 @@
-import express from "express";
+import { Router } from "express";
 import { PostController } from "./post.controller";
+import { authMiddleware } from "../middlewares/auth.middleware";
 
-const router = express.Router();
+
+const router = Router();
 
 router.get("/posts", PostController.getAll);
 router.get("/posts/:id", PostController.getById);
-router.post("/posts", PostController.create);
-router.patch("/posts/:id", PostController.update);
-router.delete("/posts/:id", PostController.delete);
+
+// protected
+router.post("/posts", authMiddleware, PostController.create);
+router.put("/posts/:id", authMiddleware, PostController.update);
+router.delete("/posts/:id", authMiddleware, PostController.delete);
 
 export default router;
